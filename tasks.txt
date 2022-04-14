@@ -1,0 +1,10 @@
+- conntect to db postgres
+- create models
+- create schemas (from pydantic)
+- CRUD
+ + create user
+ + get user
+ + get user by id
+ + remove user
+ + update user
+- Router

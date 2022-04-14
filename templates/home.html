@@ -1,0 +1,18 @@
+<html>
+<head>
+    <title>Item Details</title>
+</head>
+<body>
+    <form action="/create_job" method="post", enctype="multipart/form-data">
+        <input type="text" name="user_id" value="{{user_id}}" disabled> <br>
+
+        <label for="reference">Reference file:</label>
+        <input type="file"  name="reference"><br>
+        <label for="target">Target file:</label>
+        <input type="file"  name="target"><br>
+        <input type="submit" value="Submit">
+
+
+    </form>
+</body>
+</html>

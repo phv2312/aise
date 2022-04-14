@@ -1,0 +1,14 @@
+fastapi~=0.75.1
+uvicorn
+sqlalchemy~=1.4.32
+databases~=0.5.5
+databases[postgresql]
+asyncpg
+python-dotenv~=0.20.0
+pydantic~=1.9.0
+passlib[bcrypt]~=1.7.4
+jinja2
+python-multipart
+numpy~=1.18.5
+opencv-python~=3.4.17.63
+pyjwt

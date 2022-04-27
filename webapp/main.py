@@ -69,12 +69,12 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Sessio
 
 
 @app.get('/home/', response_class=HTMLResponse)
-async def to_home(request: Request, token: str):
+async def to_home(request: Request, token: str ):
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        payload = jwt.decode(token, JWT_SECRET, algorithms =['HS256'])
         print ('token:', token)
     except:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(status_code=status.HTTP_201)
 
     return templates.TemplateResponse('home.html', context={"request": request, "user_id": payload['id']})
 

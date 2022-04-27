@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-import models
-import schemas
+from webapp import models
+from webapp import schemas
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated="auto")
@@ -70,3 +70,12 @@ def create_image(db: Session, new_image: schemas.Image):
     db.refresh(db_image)
 
     return db_image
+
+
+def create_interpolating_result(db: Session, new_result: schemas.Result):
+    db_result = models.Result(created_at=new_result.created_at, url=new_result.url, job_id=new_result.job_id)
+    db.add(db_result)
+    db.commit()
+    db.refresh(db_result)
+
+    return db_result

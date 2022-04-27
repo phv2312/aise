@@ -34,5 +34,21 @@ class Image(BaseModel):
     created_at: str
     url: str
     is_reference: bool
+
     job: Job = None
     job_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class Result(BaseModel):
+    id: int = 0
+    created_at: str
+    url: str
+
+    job: Job = None
+    job_id: int
+
+    class Config:
+        orm_mode = True

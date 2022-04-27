@@ -1,27 +1,23 @@
 import os
-import tempfile
-import numpy as np
-import cv2
-from datetime import datetime
 import jwt
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, File, UploadFile, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from sqlalchemy.orm import Session, mapper
-from typing import List, Optional
+from sqlalchemy.orm import Session
+from typing import List
+from celery import Celery
 
-
-import models
-import schemas
-import crud
-from database import engine, SessionLocal
+from webapp import models
+from webapp import schemas
+from webapp import crud
+from webapp.database import engine, SessionLocal
 
 
 app  = FastAPI()
 models.Base.metadata.create_all(engine)
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="webapp/templates")
 
 
 STORAGE_DIR = os.getenv('STORAGE_DIR')
@@ -31,6 +27,10 @@ os.makedirs(STORAGE_DIR, exist_ok=True)
 JWT_SECRET = 'myjwtsecret'
 oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
 
+celery = Celery('simple_worker', broker=os.getenv('BROKER_URL'), backend='rpc://')
+celery.conf.task_serializer = 'pickle'
+celery.conf.result_serializer = 'pickle'
+celery.conf.accept_content = ['application/json', 'application/x-python-serialize']
 
 def get_db():
     db = SessionLocal()
@@ -38,22 +38,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-def load_image_into_numpy_array(data):
-    np_image = np.frombuffer(data, np.uint8)
-    frame = cv2.imdecode(np_image, cv2.IMREAD_COLOR)
-    cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    return frame
-
-
-def get_temp_path(np_image):
-    temp_dir = tempfile.mkdtemp(dir=STORAGE_DIR)
-    output_path = os.path.join(temp_dir, 'image.png')
-
-    cv2.imwrite(output_path, np_image)
-
-    return output_path
 
 
 @app.post('/token')
@@ -69,7 +53,7 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Sessio
 
 
 @app.get('/home/', response_class=HTMLResponse)
-async def to_home(request: Request, token: str ):
+async def to_home(request: Request, token: str = Depends(oauth2_schema)):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms =['HS256'])
         print ('token:', token)
@@ -80,23 +64,20 @@ async def to_home(request: Request, token: str ):
 
 
 @app.post('/create_job/', status_code=status.HTTP_200_OK)
-async def create_job(user_id: str = Form(...), reference: UploadFile = File(...), target: UploadFile = File(...), db: Session = Depends(get_db)):
+async def create_job(user_id: str = Form(...), reference: UploadFile = File(...), target: UploadFile = File(...),
+                     db: Session = Depends(get_db)):
 
-    reference_np_image = load_image_into_numpy_array(await reference.read())
-    target_np_image = load_image_into_numpy_array(await target.read())
-    reference_output_path = get_temp_path(reference_np_image)
-    target_output_path = get_temp_path(target_np_image)
+    reference_buffer_data = await reference.read()
+    target_buffer_data = await target.read()
 
-    # Create the job & images
-    job = schemas.Job(own_id=user_id)
-    job_db = crud.create_job(db, job)
+    # Send to celery ...
+    result = celery.send_task('webapp.worker.start_interpolation_job', kwargs={
+        'reference_buffer_data': reference_buffer_data,
+        'target_buffer_data': target_buffer_data,
+        'user_id': user_id,
+    }, serializer= 'pickle')
 
-    reference_image = schemas.Image(created_at=str(datetime.now()), url=reference_output_path, is_reference=True, job_id=job_db.id)
-    target_image = schemas.Image(created_at=str(datetime.now()), url=target_output_path, is_reference=False, job_id=job_db.id)
-    crud.create_image(db, reference_image)
-    crud.create_image(db, target_image)
-
-    return {'message': 'ok'}
+    return {'message': 'request_id: %s is under processing ...' % result.id}
 
 
 @app.post('/user/', response_model=schemas.UserOut, description='Create new user')

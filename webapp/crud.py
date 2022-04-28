@@ -20,7 +20,7 @@ def get_all_users(db:Session, limit=1000):
 
 def create_user(db:Session, user: schemas.User):
     hashed_password = pwd_context.hash(user.password)
-    db_user = models.User(user_name=user.user_name, hashed_password=hashed_password, )
+    db_user = models.User(user_name=user.user_name, hashed_password=hashed_password, skills=user.skills)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -39,9 +39,9 @@ async def authenticate_user(db: Session, user_name: str, password: str):
 
     return existing_user
 
-def update_user(db:Session, new_user: schemas.User, user_id: int):
+def update_user(db:Session, new_user: schemas.UserUpdate, user_id: int):
     db.query(models.User).filter(models.User.id == user_id).update({
-        models.User.hashed_password: pwd_context.hash(new_user.password)
+        models.User.skills: new_user.skills
     }, synchronize_session=False)
     db.commit()
 

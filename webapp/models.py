@@ -9,6 +9,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     user_name = Column(String, unique=True)
+    skills = Column(String)
     hashed_password = Column(String)
 
     jobs = relationship('Job', back_populates='owner')
@@ -22,6 +23,7 @@ class Job(Base):
     owner = relationship('User', back_populates='jobs')
     images = relationship('Image', back_populates='job')
     result = relationship('Result', back_populates='job')
+
 
 class Image(Base):
     __tablename__ = 'Image'

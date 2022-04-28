@@ -14,6 +14,7 @@ class User(BaseModel):
     id: int = 0
     user_name: str
     password: str
+    skills: str
     jobs: List[Job] = []
 
     class Config:
@@ -23,7 +24,15 @@ class User(BaseModel):
 class UserOut(BaseModel):
     id: int = 0
     user_name: str
+    skills: str
     jobs: List[Job] = []
+
+    class Config:
+        orm_mode = True
+
+
+class UserUpdate(BaseModel):
+    skills: str
 
     class Config:
         orm_mode = True

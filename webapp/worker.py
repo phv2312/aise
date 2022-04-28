@@ -9,7 +9,7 @@ from webapp import schemas, crud
 
 
 db = SessionLocal()
-celery_app = Celery('worker', broker=os.getenv('BROKER_URL'), backend='rpc://')
+celery_app = Celery('worker', broker=os.getenv('BROKER_URL'), backend=os.getenv('BACKEND_URL'))
 celery_app.conf.task_serializer = 'pickle'
 celery_app.conf.result_serializer = 'pickle'
 celery_app.conf.accept_content = ['application/json', 'application/x-python-serialize']

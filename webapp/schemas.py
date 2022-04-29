@@ -5,6 +5,7 @@ from pydantic import BaseModel
 class Job(BaseModel):
     id: int = 0
     own_id: int
+    status: str
 
     class Config:
         orm_mode = True

@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import cv2
 import tempfile
@@ -40,28 +41,35 @@ def interpolate(reference_image: np.ndarray, target_image: np.ndarray):
 
 
 @celery_app.task
-def start_interpolation_job(reference_buffer_data, target_buffer_data, user_id):
-    # Create the job & images
-    job = schemas.Job(own_id=user_id)
-    job_db = crud.create_job(db, job)
+def start_interpolation_job(reference_buffer_data, target_buffer_data, job_id):
+    time.sleep(10)
+
+
 
     #
-    reference_np_image = load_image_into_numpy_array(reference_buffer_data)
-    reference_output_path = get_temp_path(reference_np_image)
-    reference_image = schemas.Image(created_at=str(datetime.now()), url=reference_output_path, is_reference=True,
-                                    job_id=job_db.id)
-    crud.create_image(db, reference_image)
+    try:
+        reference_np_image = load_image_into_numpy_array(reference_buffer_data)
+        reference_output_path = get_temp_path(reference_np_image)
+        reference_image = schemas.Image(created_at=str(datetime.now()), url=reference_output_path, is_reference=True,
+                                        job_id=job_id)
+        crud.create_image(db, reference_image)
 
-    target_np_image = load_image_into_numpy_array(target_buffer_data)
-    target_output_path = get_temp_path(target_np_image)
-    target_image = schemas.Image(created_at=str(datetime.now()), url=target_output_path, is_reference=False,
-                                 job_id=job_db.id)
-    crud.create_image(db, target_image)
+        target_np_image = load_image_into_numpy_array(target_buffer_data)
+        target_output_path = get_temp_path(target_np_image)
+        target_image = schemas.Image(created_at=str(datetime.now()), url=target_output_path, is_reference=False,
+                                     job_id=job_id)
+        crud.create_image(db, target_image)
 
-    # Result
-    interpolating_np_image = interpolate(reference_np_image, target_np_image)
-    result_output_path = get_temp_path(interpolating_np_image)
-    result = schemas.Result(created_at=str(datetime.now()), url=result_output_path, job_id=job_db.id)
-    crud.create_interpolating_result(db, result)
+        # Result
+        interpolating_np_image = interpolate(reference_np_image, target_np_image)
+        result_output_path = get_temp_path(interpolating_np_image)
+        result = schemas.Result(created_at=str(datetime.now()), url=result_output_path, job_id=job_id)
+        crud.create_interpolating_result(db, result)
+
+        crud.update_job(db, job_id, 'SUCCESS')
+
+    except Exception as e:
+        print (e)
+        crud.update_job(db, job_id, 'FAILURE')
 
     return

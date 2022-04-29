@@ -18,6 +18,7 @@ class User(Base):
 class Job(Base):
     __tablename__ = 'Job'
     id = Column(Integer, primary_key=True)
+    status = Column(String)
 
     own_id = Column(Integer, ForeignKey("User.id"))
     owner = relationship('User', back_populates='jobs')

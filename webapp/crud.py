@@ -54,12 +54,23 @@ def delete_user(db:Session, user_id: int):
 
 
 def create_job(db: Session, new_job: schemas.Job):
-    db_job = models.Job(own_id=new_job.own_id)
+    db_job = models.Job(own_id=new_job.own_id, status=new_job.status)
     db.add(db_job)
     db.commit()
     db.refresh(db_job)
 
     return db_job
+
+
+def update_job(db: Session, job_id: int, status: str):
+    db.query(models.Job).filter(models.Job.id == job_id).update({
+        models.Job.status: status
+    }, synchronize_session=False)
+    db.commit()
+
+
+def get_job_by_id(db: Session, job_id: int):
+    return db.query(models.Job).filter(models.Job.id == job_id).first()
 
 
 def create_image(db: Session, new_image: schemas.Image):

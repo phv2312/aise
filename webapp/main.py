@@ -14,6 +14,9 @@ from webapp import schemas
 from webapp import crud
 from webapp.database import engine, SessionLocal
 
+# from webapp.worker import start_interpolation_job
+# start_interpolation_job
+
 #
 app  = FastAPI()
 models.Base.metadata.create_all(engine)
@@ -88,25 +91,38 @@ async def to_home(request: Request, token: str = Depends(oauth2_schema)):
 
 
 @app.post('/create_job/', status_code=status.HTTP_200_OK, tags=['Celery Workers'])
-async def create_job(user_id: str = Form(...), reference: UploadFile = File(...), target: UploadFile = File(...)):
+async def create_job(user_id: str = Form(...), reference: UploadFile = File(...), target: UploadFile = File(...),
+                     db: Session = Depends(get_db)):
 
     reference_buffer_data = await reference.read()
     target_buffer_data = await target.read()
+
+    # Create the job & images
+    job = schemas.Job(own_id=user_id, status='PENDING')
+    job_db = crud.create_job(db, job)
 
     # Send to celery ...
     result = celery.send_task('webapp.worker.start_interpolation_job', kwargs={
         'reference_buffer_data': reference_buffer_data,
         'target_buffer_data': target_buffer_data,
-        'user_id': user_id,
+        'job_id': job_db.id,
     }, serializer= 'pickle')
 
     return {'message': 'request_id: %s is under processing ...' % result.id}
 
 
-@app.get('/worker_status/{request_id}', tags=['Celery Workers'])
-async def get_request_status(request_id: str):
-    request_status = celery.AsyncResult(request_id, app=celery)
-    return {"request_status": request_status.state}
+@app.get('/job_status/{job_id}', tags=['Celery Workers'])
+async def get_request_status(job_id: int, db: Session = Depends(get_db)):
+    # request_status = celery.AsyncResult(job_id, app=celery)
+    # return {"request_status": request_status.state}
+
+    existing_job = crud.get_job_by_id(db, job_id)
+    if not existing_job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Job id: %d not found !" % job_id)
+    return {
+        'status': existing_job.status
+    }
 
 
 @app.post('/user/', response_model=schemas.UserOut, description='Create new user', tags=['Users'])
